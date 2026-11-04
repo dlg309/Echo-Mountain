@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createCourse, LEVELS, WIDTH} from '../dist/course.mjs';
-import {newRun,start,update,formatTime,RIDER_RADIUS} from '../dist/engine.mjs';
+import {newRun,start,pause,resume,performTrick,update,formatTime,RIDER_RADIUS} from '../dist/engine.mjs';
 import {loadRecords,saveRun,validRecord} from '../dist/records.mjs';
 
 const course=(entities=[],overrides={})=>({difficulty:'beginner',width:WIDTH,length:1000,initialSpeed:200,maxSpeed:200,acceleration:0,entities,...overrides});
@@ -25,8 +25,8 @@ test('ready runs do not advance, and steering remains within the course',()=>{
   ride(r,2,-1);assert.equal(r.x,RIDER_RADIUS);ride(r,4,1);assert.equal(r.x,WIDTH-RIDER_RADIUS);
 });
 test('intermediate acceleration rises to its cap and stays capped',()=>{
-  const c=course([],{length:20000,initialSpeed:100,maxSpeed:110,acceleration:10});const r=start(newRun('intermediate',c));
-  ride(r,.5);assert.ok(r.speed>100 && r.speed<110);ride(r,4);assert.equal(r.speed,110);
+  const c=course([],{length:20000,initialSpeed:100,maxSpeed:220,acceleration:10});const r=start(newRun('intermediate',c));
+  ride(r,.5);assert.ok(r.speed>100 && r.speed<220);ride(r,4);assert.equal(r.speed,220);ride(r,2);assert.equal(r.speed,220);
 });
 test('colliding ends the run and freezes score, time, and position',()=>{
   const r=start(newRun('beginner',course([{id:0,kind:'tree',x:360,y:100,halfWidth:27,halfHeight:27}])));
@@ -164,4 +164,33 @@ test('expert layouts mix trees, rocks, and fewer fences without crowding every l
   assert.ok(average>=150 && average<=220,`unexpected expert obstacle count: ${average}`);
   assert.ok(counts.fence<total*.4,'fences should not dominate the course');
   assert.ok(counts.tree>total*.15 && counts.rock>total*.15,'trees and rocks should both appear regularly');
+});
+
+test('pause freezes a run and resume continues it without changing terminal states',()=>{
+  const run=start(newRun('beginner',course()));
+  update(run,.05,1);pause(run);
+  const frozen={x:run.x,y:run.y,time:run.time,score:run.score};
+  update(run,.05,-1);assert.deepEqual({x:run.x,y:run.y,time:run.time,score:run.score},frozen);
+  resume(run);update(run,.05,0);assert.ok(run.y>frozen.y);assert.ok(run.score>frozen.score);
+  run.phase='crashed';pause(run);resume(run);assert.equal(run.phase,'crashed');
+});
+
+test('tricks require airtime, finish once, and score on a safe landing',()=>{
+  for(const [name,bonus] of [['180',100],['360',200],['720',400],['frontflip',250],['backflip',250]]){
+    const run=start(newRun('expert',course()));
+    assert.equal(performTrick(run,name),false);
+    run.airTime=1;run.airDuration=1;run.airKind='large';
+    assert.equal(performTrick(run,name),true);assert.equal(performTrick(run,name),false);
+    ride(run,.7);assert.ok(run.airTime>0);assert.ok(run.score<bonus);
+    ride(run,.35);assert.equal(run.airTime,0);assert.ok(run.score>=bonus);
+    const after=run.score;update(run,.05,0);assert.ok(run.score-after<1);
+  }
+});
+test('tricks cannot start too late or during pause and do not score on a crash',()=>{
+  const run=start(newRun('expert',course([{id:1,kind:'tree',x:360,y:20,halfWidth:27,halfHeight:27}])));
+  run.airTime=.1;run.airDuration=1;run.airKind='small';
+  assert.equal(performTrick(run,'720'),false);
+  pause(run);assert.equal(performTrick(run,'180'),false);resume(run);
+  run.airTime=1;assert.equal(performTrick(run,'180'),true);
+  update(run,.05,0);assert.equal(run.phase,'crashed');assert.equal(run.trick,null);assert.ok(run.score<100);
 });

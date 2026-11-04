@@ -1,6 +1,6 @@
 # Echo Mountain
 
-A top-down snowboarding game prototype. Choose a difficulty and time of day, steer down the mountain, avoid obstacles, and use ramps to jump over them. Expert mode has optional fog; use the **Expert Fog** checkbox to turn it on or off.
+A top-down snowboarding game where you carve through generated courses, dodge obstacles, and take ramps toward the finish. Choose a difficulty and time of day, build your multiplier with jumps and close calls, land aerial tricks for points, and chase your longest descent. Live statistics, saved run markers, an optional expert fog setting, and a post-run summary keep track of the ride.
 
 ## What you need
 
@@ -34,9 +34,12 @@ Serve the game through the local server instead of opening `dist/index.html` dir
 ## Controls and gameplay
 
 - Press **Left/Right** or **A/D** to steer. Narrow screens show touch buttons.
+- Press **P** or **Escape**, or use **Pause**, to pause and resume. From pause you can resume or start a fresh run.
+- The first-run guide explains the basics; dismiss it with **Got it**, or reopen it using **How to ride**.
 - Choose Beginner, Intermediate, or Expert and a time of day above the game. Changing difficulty starts a fresh run.
 - Expert fog can be toggled during a run.
-- Ramps activate automatically. Small ramps clear small rocks and fences; large ramps can also clear larger rocks and trees. A collision ends the run.
+- Ramps appear on Intermediate and Expert courses and activate automatically. Small ramps clear small rocks and fences; large ramps can also clear larger rocks and trees. A collision ends the run.
+- While airborne, press **Z / X / C / V / B** (arrow-key players) or **G / H / J / K / L** (A/D players) for a **180 / 360 / 720 / front flip / backflip**, respectively. Touch players can use the on-screen trick buttons. Press just before takeoff or while airborne, and start early enough to finish the trick; one trick is allowed per jump, and points are awarded on a safe landing. Use **Trick motion** above the game to turn the animation on or off; it starts off when your device requests reduced motion.
 - Time on the slope raises your score; close calls and ramps raise the multiplier.
 - Intermediate and Expert courses reshuffle each run. Previous and longest-run markers retain their distance and position for each difficulty, although the obstacles around them may change.
 
@@ -50,7 +53,7 @@ With Node.js 18 or newer installed, run this from the project folder:
 node --test
 ```
 
-The tests cover game rules, randomly generated courses, jumps and landings, fog visibility, and saved records.
+The tests cover game rules, pause and resume, randomly generated courses, jumps and landings, fog visibility, and saved records.
 
 ## Put the project on GitHub
 

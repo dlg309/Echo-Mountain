@@ -1,0 +1,38 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createCourse} from '../dist/course.mjs';
+import {newRun, start, TRICKS} from '../dist/engine.mjs';
+import {render} from '../dist/renderer.mjs';
+
+function rotations(name, fraction, reducedMotion=false){
+  const rotations=[];
+  const ctx=new Proxy({}, {get(target,key){if(key==='rotate')return angle=>rotations.push(angle);return target[key]??(()=>{})},set(target,key,value){target[key]=value;return true}});
+  const course={...createCourse('intermediate'),entities:[]};
+  const run=start(newRun('intermediate',course));
+  run.airTime=.5;run.airDuration=1;run.airKind='small';
+  run.trick={name,elapsed:TRICKS[name].duration*fraction,complete:false};
+  render(ctx,{width:840,height:1000},run,'day',null,false,{reducedMotion});
+  return rotations;
+}
+const includesAngle=(values,expected)=>values.some(value=>Math.abs(value-expected)<1e-8);
+test('trick rendering rotates the rider for spins and opposite flips',()=>{
+  assert.ok(includesAngle(rotations('180',.5),Math.PI/2));
+  assert.ok(includesAngle(rotations('360',.5),Math.PI));
+  assert.ok(includesAngle(rotations('720',.5),Math.PI*2));
+  assert.ok(includesAngle(rotations('frontflip',.25),Math.PI/2));
+  assert.ok(includesAngle(rotations('backflip',.25),-Math.PI/2));
+  assert.ok(!includesAngle(rotations('360',.5,true),Math.PI));
+});
+
+test('sprite flips select forward and reverse frames and reduced motion uses the base pose',()=>{
+  function source(name,fraction,reducedMotion=false,trickMotion=!reducedMotion){
+    let drawn;const ctx=new Proxy({}, {get(target,key){if(key==='drawImage')return (...args)=>{drawn=args};return target[key]??(()=>{})},set(target,key,value){target[key]=value;return true}});
+    const run=start(newRun('intermediate',{...createCourse('intermediate'),entities:[]}));
+    run.airTime=.5;run.airDuration=1;run.airKind='small';run.trick={name,elapsed:TRICKS[name].duration*fraction};
+    render(ctx,{width:840,height:1000},run,'day',null,false,{reducedMotion,trickMotion,sprite:{naturalWidth:400}});return drawn.slice(1,3);
+  }
+  assert.deepEqual(source('frontflip',.25),[0,100]);
+  assert.deepEqual(source('backflip',.25),[300,200]);
+  assert.deepEqual(source('frontflip',.25,true),[0,0]);
+  assert.deepEqual(source('frontflip',.25,true,true),[0,100]);
+});
