@@ -1,6 +1,6 @@
 # Echo Mountain
 
-A top-down snowboarding game where you carve through generated courses, dodge obstacles, and take ramps toward the finish. Choose a difficulty and time of day, build your multiplier with jumps and close calls, land aerial tricks for points, and chase your longest descent. Live statistics, saved run markers, an optional expert fog setting, and a post-run summary keep track of the ride.
+A top-down snowboarding game where you carve through generated courses, dodge obstacles, and take ramps toward the finish. Choose a downhill run, a practice run, a ramps-only trick run, or a halfpipe; pick a difficulty and time of day; and land aerial tricks for points. Live statistics, saved run markers, an optional expert fog setting, and a post-run summary keep track of the ride.
 
 ## What you need
 
@@ -34,16 +34,18 @@ Serve the game through the local server instead of opening `dist/index.html` dir
 ## Controls and gameplay
 
 - Press **Left/Right** or **A/D** to steer. Narrow screens show touch buttons.
+- Choose **Downhill** for the original obstacle course, **Trick run** for a course with ramps only, or **Halfpipe** for automatic runs between the two lips. In the halfpipe, steering changes your speed across the pipe; each lip launches you, and you land in the transition heading toward the opposite side.
+- Choose **Practice** to ride the same kind of course as Downhill without ending the run on a collision. A fall briefly stops the rider, resets the score to zero and the multiplier to 1.00×, then lets you continue from the same position. Descent and elapsed time are retained; time continues during recovery unless paused. The obstacle that caused the fall cannot immediately trigger it again, while other obstacles remain active.
 - Press **P** or **Escape**, or use **Pause**, to pause and resume. From pause you can resume or start a fresh run.
 - The first-run guide explains the basics; dismiss it with **Got it**, or reopen it using **How to ride**.
-- Choose Beginner, Intermediate, or Expert and a time of day above the game. Changing difficulty starts a fresh run.
+- Choose Beginner, Intermediate, or Expert and a time of day above the game. Lighting choices include day, sunrise, sunset, twilight, and a starry night. Changing difficulty starts a fresh run.
 - Expert fog can be toggled during a run.
-- Ramps appear on Intermediate and Expert courses and activate automatically. Small ramps clear small rocks and fences; large ramps can also clear larger rocks and trees. A collision ends the run.
-- While airborne, press **Z / X / C / V / B** (arrow-key players) or **G / H / J / K / L** (A/D players) for a **180 / 360 / 720 / front flip / backflip**, respectively. Touch players can use the on-screen trick buttons. Press just before takeoff or while airborne, and start early enough to finish the trick; one trick is allowed per jump, and points are awarded on a safe landing. Use **Trick motion** above the game to turn the animation on or off; it starts off when your device requests reduced motion.
+- In Downhill and Practice, ramps appear on Intermediate and Expert courses and activate automatically. Small ramps clear small rocks and fences; large ramps can also clear larger rocks and trees. A collision ends a Downhill run but starts recovery in Practice. Trick runs have ramps at every difficulty and no obstacles.
+- While airborne, press **Z / X / C / V / B** (arrow-key players) or **G / H / J / K / L** (A/D players) for a **180 / 360 / 720 / front flip / backflip**, respectively. Touch players can use the on-screen trick buttons. Small ramps allow one trick; large ramps and halfpipe lips allow up to two, including the same trick twice. Finish the first before starting the second, and start early enough to finish before landing. Release and press again to repeat a trick. Points are awarded on a safe landing. Use **Trick motion** above the game to turn the animation on or off; it starts off when your device requests reduced motion.
 - Time on the slope raises your score; close calls and ramps raise the multiplier.
-- Intermediate and Expert courses reshuffle each run. Previous and longest-run markers retain their distance and position for each difficulty, although the obstacles around them may change.
+- Intermediate and Expert downhill courses reshuffle each run. Previous and longest-run markers retain their distance and position for each difficulty, although the obstacles around them may change.
 
-Records are stored in the current browser's local storage. The local game starts with its own records: records from a hosted version do not automatically transfer, and clearing browser data may delete local records.
+Records are stored separately by mode and difficulty in the current browser's local storage. Existing downhill records remain available. The local game starts with its own records: records from a hosted version do not automatically transfer, and clearing browser data may delete local records.
 
 ## Run the tests
 
@@ -53,7 +55,7 @@ With Node.js 18 or newer installed, run this from the project folder:
 node --test
 ```
 
-The tests cover game rules, pause and resume, randomly generated courses, jumps and landings, fog visibility, and saved records.
+The tests cover game rules, practice recovery, trick modes, pause and resume, randomly generated courses, jumps and landings, fog visibility, and saved records.
 
 ## Put the project on GitHub
 
@@ -80,6 +82,6 @@ The tests cover game rules, pause and resume, randomly generated courses, jumps 
 - `dist/engine.mjs`: movement, collisions, scoring, and jumps.
 - `dist/renderer.mjs` and `dist/fog.mjs`: drawing and fog.
 - `dist/records.mjs`: browser-local run records.
-- `tests/engine.test.mjs`: automated tests.
+- `tests/`: automated tests for the engine, trick modes, renderer, and interface logic.
 
 The `dist` folder is the actual editable source for this prototype; you do not need to compile it.

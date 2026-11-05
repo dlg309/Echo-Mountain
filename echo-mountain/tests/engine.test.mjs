@@ -26,7 +26,7 @@ test('ready runs do not advance, and steering remains within the course',()=>{
 });
 test('intermediate acceleration rises to its cap and stays capped',()=>{
   const c=course([],{length:20000,initialSpeed:100,maxSpeed:220,acceleration:10});const r=start(newRun('intermediate',c));
-  ride(r,.5);assert.ok(r.speed>100 && r.speed<220);ride(r,4);assert.equal(r.speed,220);ride(r,2);assert.equal(r.speed,220);
+  ride(r,.5);assert.ok(r.speed>100 && r.speed<220);ride(r,12);assert.equal(r.speed,220);ride(r,2);assert.equal(r.speed,220);
 });
 test('colliding ends the run and freezes score, time, and position',()=>{
   const r=start(newRun('beginner',course([{id:0,kind:'tree',x:360,y:100,halfWidth:27,halfHeight:27}])));
@@ -100,10 +100,12 @@ test('different seeds reshuffle courses, with separated and compatible ramp targ
   }
 });
 test('paired ramps clear their obstacles and provide a safe landing at minimum and maximum speed',()=>{
+  let checked=0;
   for(const name of ['intermediate','expert']){
     for(let seed=1;seed<=25;seed++){
       const c=createCourse(name,seed);
       for(const ramp of c.entities.filter(e=>e.kind.startsWith('ramp'))){
+        checked++;
         const target=c.entities.find(e=>e.id===ramp.pairedObstacleId);
         for(const speed of [c.initialSpeed,c.maxSpeed]){
           const model={...c,initialSpeed:speed,maxSpeed:speed,acceleration:0};
@@ -117,6 +119,7 @@ test('paired ramps clear their obstacles and provide a safe landing at minimum a
       }
     }
   }
+  assert.ok(checked>0,'generated courses contain ramps to test');
 });
 test('small jumps clear only small rocks or fences; large jumps can clear trees and rocks',()=>{
   const trial=(rampKind,obstacleKind,halfWidth,halfHeight)=>{
@@ -160,7 +163,7 @@ test('expert layouts mix trees, rocks, and fewer fences without crowding every l
     const c=createCourse('expert',seed);
     for(const e of c.entities)if(Object.hasOwn(counts,e.kind)){counts[e.kind]++;total++}
   }
-  const average=total/80;
+  const average=total/80/(LEVELS.expert.length/18000);
   assert.ok(average>=150 && average<=220,`unexpected expert obstacle count: ${average}`);
   assert.ok(counts.fence<total*.4,'fences should not dominate the course');
   assert.ok(counts.tree>total*.15 && counts.rock>total*.15,'trees and rocks should both appear regularly');

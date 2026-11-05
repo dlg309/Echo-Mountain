@@ -1,11 +1,13 @@
 // World coordinates use 10 units per displayed metre. A seeded layout makes
 // random runs reproducible while keeping records in the same coordinate space.
 export const WIDTH = 720;
+export const PIPE_LEFT=95;
+export const PIPE_RIGHT=WIDTH-PIPE_LEFT;
 export const UNITS_PER_METRE = 10;
 export const LEVELS = {
-  beginner: {label:'Beginner',length:4200,initialSpeed:200,maxSpeed:200,acceleration:0,gap:250,seed:11},
-  intermediate: {label:'Intermediate',length:10500,initialSpeed:185,maxSpeed:260,acceleration:3.6,gap:205,seed:29},
-  expert: {label:'Expert',length:18000,initialSpeed:270,maxSpeed:340,acceleration:2.8,gap:190,seed:47},
+  beginner: {label:'Beginner',length:10500,initialSpeed:200,maxSpeed:200,acceleration:0,gap:250,seed:11},
+  intermediate: {label:'Intermediate',length:26250,initialSpeed:185,maxSpeed:260,acceleration:3.6,gap:205,seed:29},
+  expert: {label:'Expert',length:45000,initialSpeed:270,maxSpeed:340,acceleration:2.8,gap:190,seed:47},
 };
 export const LANES=[75,188,301,419,532,645];
 export const MIN_RAMP_SPACING=650;
@@ -25,10 +27,19 @@ function makeEntity(id,kind,x,y,extra={}){
   const sizes={tree:[27,27],rock:[24,20],'rock-small':[15,13],fence:[41,10],'ramp-small':[28,22],'ramp-large':[39,27]};
   const [halfWidth,halfHeight]=sizes[kind];return {id,kind,x,y,halfWidth,halfHeight,...extra};
 }
-export function createCourse(difficulty,seedOverride){
+export function createCourse(difficulty,seedOverride,mode='downhill'){
   const level=LEVELS[difficulty];if(!level)throw new Error(`Unknown difficulty: ${difficulty}`);
   const seed=Number.isFinite(seedOverride)?seedOverride>>>0:level.seed,rnd=randomSource(seed),entities=[],rows=[];
   const add=(kind,x,y,extra)=>{const entity=makeEntity(entities.length,kind,x,y,extra);entities.push(entity);return entity};
+  if(mode==='halfpipe')return {difficulty,...level,mode,seed,width:WIDTH,length:LEVELS.beginner.length,initialSpeed:200,maxSpeed:200,acceleration:0,rows,entities};
+  if(mode==='ramps'){
+    const rampLanes=[...LANES.slice(0,3),WIDTH/2,...LANES.slice(3)];
+    for(let y=550,row=0;y<level.length-200;y+=550,row++){
+      for(let lane=0;lane<rampLanes.length;lane++)add((row+lane)%3===0?'ramp-large':'ramp-small',rampLanes[lane],y,{row});
+    }
+    return {difficulty,...level,mode,seed,width:WIDTH,rows,entities};
+  }
+  if(mode!=='downhill'&&mode!=='practice')throw new Error(`Unknown mode: ${mode}`);
   // Keep the familiar beginner course stable, including existing run markers.
   if(difficulty==='beginner'){
     let row=0;
@@ -38,7 +49,7 @@ export function createCourse(difficulty,seedOverride){
       rows.push({y,safe});add('tree',x,y,{row});row++;
       y+=level.gap+Math.floor(rnd()*38);
     }
-    return {difficulty,...level,seed,width:WIDTH,rows,entities};
+    return {difficulty,...level,...(mode==='practice'?{mode}:{}),seed,width:WIDTH,rows,entities};
   }
   let nextRamp=700+rnd()*650,row=0,reserved=[];
   for(let y=550;y<level.length-350;){
@@ -48,11 +59,12 @@ export function createCourse(difficulty,seedOverride){
     const previous=row>0&&row%5===0?safeLane(row-1):-1;
     let candidates=LANES.map((_,i)=>i).filter(i=>i!==safe&&i!==previous);
     reserved=reserved.filter(z=>z.until>=y-60);
-    const usable=i=>!reserved.some(z=>Math.abs(LANES[i]-z.x)<100 && y>=z.from && y<=z.until);
+    // Obstacles can be placed up to 19 units either side of their row center.
+    const usable=i=>!reserved.some(z=>Math.abs(LANES[i]-z.x)<100 && y+19>=z.from && y-19<=z.until);
     const available=()=>candidates.filter(usable);
     const remove=i=>{candidates=candidates.filter(x=>x!==i)};
     let rampMade=false;
-    if(difficulty!=='beginner' && y>=nextRamp && y<level.length-850 && available().length && rnd()<.7){
+    if(y>=nextRamp && y<level.length-850 && available().length && rnd()<.7){
       const lane=chooseLane(available(),rnd),x=LANES[lane]+(rnd()-.5)*16;
       const large=difficulty==='expert'&&rnd()<.48;
       const kind=large?'ramp-large':'ramp-small';
@@ -85,5 +97,5 @@ export function createCourse(difficulty,seedOverride){
     row++;
     y+=level.gap+(rnd()-.5)*55-(difficulty==='expert'?progress*28:0);
   }
-  return {difficulty,...level,seed,width:WIDTH,rows,entities:entities.sort((a,b)=>a.y-b.y)};
+  return {difficulty,...level,...(mode==='practice'?{mode}:{}),seed,width:WIDTH,rows,entities:entities.sort((a,b)=>a.y-b.y)};
 }
