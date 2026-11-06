@@ -4,7 +4,7 @@ import {createCourse} from '../dist/course.mjs';
 import {newRun,start,update} from '../dist/engine.mjs';
 
 test('game inputs reach the rider renderer after a ramp', async()=>{
-  let clock=1000, nextFrame, drawCalls=[];
+  let clock=1000, nextFrame, resizeHandler, drawCalls=[];
   const events=new Map(), elements=new Map();
   const listen=(map,type,fn)=>{if(!map.has(type))map.set(type,[]);map.get(type).push(fn)};
   class Element {
@@ -12,7 +12,7 @@ test('game inputs reach the rider renderer after a ramp', async()=>{
     addEventListener(type,fn){listen(this.listeners,type,fn)}
     dispatch(type,extra={}){const e={target:this,preventDefault(){},...extra};for(const fn of this.listeners.get(type)||[])fn(e)}
     focus(){} scrollIntoView(){} setAttribute(){} setPointerCapture(){}
-    getBoundingClientRect(){return {width:570,height:700}}
+    getBoundingClientRect(){return this.rect||{width:570,height:700}}
     set innerHTML(value){this.html=value}
     get innerHTML(){return this.html}
     querySelector(selector){return selector==='.tutorial'&&this.html?.includes('class="tutorial"')?{}:null}
@@ -34,7 +34,7 @@ test('game inputs reach the rider renderer after a ramp', async()=>{
   globalThis.addEventListener=(type,fn)=>listen(events,type,fn);
   Object.defineProperty(globalThis,'performance',{configurable:true,value:{now:()=>clock}});
   globalThis.requestAnimationFrame=fn=>{nextFrame=fn};
-  globalThis.ResizeObserver=class{observe(){}};
+  globalThis.ResizeObserver=class{constructor(callback){resizeHandler=callback}observe(){}};
   globalThis.matchMedia=()=>({matches:false,addEventListener(){}});
   globalThis.Image=class{naturalWidth=400;set src(value){this.onload()}};
   const originalRandom=Math.random;Math.random=()=>0;
@@ -44,13 +44,23 @@ test('game inputs reach the rider renderer after a ramp', async()=>{
     const tick=()=>{clock+=1000/60;const cb=nextFrame;assert.ok(cb,'game loop scheduled a frame');nextFrame=null;cb(clock)};
     assert.equal(el('last-record').textContent,'98 M','pre-existing downhill record loads without migration');
     assert.equal(el('best-record').textContent,'119 M','pre-existing downhill best loads without migration');
+    el('lighting').value='golden';el('lighting').dispatch('change');
+    assert.equal(el('light-name').textContent,'GOLDEN HOUR');
+    assert.equal(el('.mountain-stage').dataset.light,'golden');
     el('lighting').value='twilight';el('lighting').dispatch('change');
     assert.equal(el('light-name').textContent,'TWILIGHT');
     assert.equal(el('.mountain-stage').dataset.light,'twilight');
     el('mode').value='ramps';el('mode').dispatch('change');assert.equal(el('trail-name').textContent,'Trick Run');assert.equal(el('last-record').textContent,'—');
     el('mode').value='halfpipe';el('mode').dispatch('change');assert.equal(el('trail-name').textContent,'The Halfpipe');assert.equal(el('last-record').textContent,'—');
     el('mode').value='downhill';el('mode').dispatch('change');assert.equal(el('last-record').textContent,'98 M');
-    for(const [input,label] of [['z','180'],['x','360'],['c','720'],['v','FRONT FLIP'],['b','BACKFLIP'],['g','180'],['h','360'],['j','720'],['k','FRONT FLIP'],['l','BACKFLIP'],['touch','FRONT FLIP'],['queued','FRONT FLIP'],['motion','FRONT FLIP']]){
+    el('start').dispatch('click');for(let i=0;i<35;i++)tick();
+    const beforeResize=Number(el('distance').textContent);
+    assert.ok(beforeResize>0,'run is moving before resize');
+    el('game').rect={width:400,height:620};resizeHandler();
+    assert.ok(Math.abs(el('game').height/el('game').width-620/400)<.002,'backing canvas preserves aspect ratio');
+    for(let i=0;i<20;i++)tick();
+    assert.ok(Number(el('distance').textContent)>beforeResize,'resizing does not reset the active run');
+    for(const [input,label] of [['z','180'],['x','360'],['c','720'],['v','FRONT FLIP'],['b','BACKFLIP'],['g','180'],['h','360'],['j','720'],['k','FRONT FLIP'],['l','BACKFLIP'],['touch','FRONT FLIP'],['queued','FRONT FLIP']]){
       el('difficulty').value='intermediate';el('difficulty').dispatch('change');el('start').dispatch('click');
       const model=start(newRun('intermediate',createCourse('intermediate',0)));let left=false,queued=false;tick();
       for(let i=0;i<450&&model.phase==='playing'&&!model.airTime;i++){
@@ -63,19 +73,16 @@ test('game inputs reach the rider renderer after a ramp', async()=>{
       if(left)dispatch('keyup','ArrowLeft');
       assert.ok(model.airTime>0,`${input}: model reached a ramp`);
       drawCalls=[];
-      if(input==='motion')el('trick-motion').dispatch('click');
-      if(input==='touch')trickButtons[3].dispatch('pointerdown');else if(input==='motion')dispatch('keydown','v');else if(input!=='queued')dispatch('keydown',input);
+      if(input==='touch')trickButtons[3].dispatch('pointerdown');else if(input!=='queued')dispatch('keydown',input);
       for(let i=0;i<12;i++)tick();
-      if(!['touch','queued','motion'].includes(input))dispatch('keyup',input);
+      if(!['touch','queued'].includes(input))dispatch('keyup',input);
       assert.ok(drawCalls.some(call=>call[0]==='strokeText'&&call[1]===label),`${input}: trick label was drawn`);
       const frames=new Set(drawCalls.filter(call=>call[0]==='drawImage').map(call=>`${call[2]},${call[3]}`));
       assert.ok(frames.size,`${input}: rider sprite was drawn`);
       if(['v','b','k','l','touch','queued'].includes(input))assert.ok(frames.size>1,`${input}: flip frames advanced`);
-      else if(input==='motion')assert.equal(frames.size,1,'motion off keeps the rider still');
       else assert.ok(drawCalls.some(call=>call[0]==='rotate'&&Math.abs(call[1])>.5),`${input}: board rotated`);
     }
-    // Enable motion again and check successive trick inputs on separate lip launches.
-    el('trick-motion').dispatch('click');
+    // Check successive trick inputs on separate lip launches.
     const startHalfpipeJump=()=>{
       el('mode').value='halfpipe';el('mode').dispatch('change');el('start').dispatch('click');
       const model=start(newRun('intermediate',createCourse('intermediate',0,'halfpipe')));tick();
@@ -157,8 +164,13 @@ test('game inputs reach the rider renderer after a ramp', async()=>{
     assert.equal(String(el('distance').textContent),'0','switching modes during recovery starts a clean ready state');
     el('mode').value='practice';el('mode').dispatch('change');el('start').dispatch('click');
     for(let i=0;i<4000;i++)tick();
-    assert.equal(el('last-record').textContent,'1050 M','a practice run reaches its result');
+    assert.equal(el('percent').textContent,'ENDLESS','practice has no finish percentage');
+    assert.equal(el('distance-total').hidden,true);assert.equal(el('progress-wrap').hidden,true);
+    assert.equal(saved.has('echo-mountain-records-v1-practice'),false,'practice does not finish at the old finish line');
+    el('pause').dispatch('click');el('end-practice').dispatch('click');
+    assert.ok(el('overlay-content').html.includes('PRACTICE COMPLETE'),'ending practice shows results');
     assert.ok(saved.has('echo-mountain-records-v1-practice'),'practice uses a separate record key');
+    assert.ok(JSON.parse(saved.get('echo-mountain-records-v1-practice')).beginner.last.distance>10500,'practice saves beyond the old finish');
     assert.equal(saved.get('echo-mountain-records-v1'),legacyRecord,'practice does not overwrite downhill records');
     el('mode').value='downhill';el('mode').dispatch('change');assert.equal(el('last-record').textContent,'98 M','original downhill record remains readable');
   } finally {Math.random=originalRandom}

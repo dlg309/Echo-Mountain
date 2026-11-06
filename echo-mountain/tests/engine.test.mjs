@@ -36,6 +36,17 @@ test('a close call increases multiplier exactly once without a collision',()=>{
   const r=start(newRun('beginner',course([{id:0,kind:'tree',x:410,y:100,halfWidth:27,halfHeight:27}])));
   ride(r,1);assert.equal(r.phase,'playing');assert.equal(r.multiplier,1.25);ride(r,1);assert.equal(r.multiplier,1.25);assert.ok(r.score>15);
 });
+test('close calls and ramps raise the multiplier beyond 5×',()=>{
+  const objects=[
+    {id:0,kind:'tree',x:410,y:100,halfWidth:27,halfHeight:27},
+    {id:1,kind:'tree',x:410,y:200,halfWidth:27,halfHeight:27},
+    {id:2,kind:'ramp-large',x:360,y:350,halfWidth:39,halfHeight:27},
+  ];
+  const run=start(newRun('beginner',course(objects)));run.multiplier=4.75;
+  ride(run,1.25);assert.equal(run.multiplier,5.25);
+  ride(run,.4);assert.equal(run.multiplier,5.75);
+  const score=run.score;update(run,.05,0);assert.ok(run.score-score>4,'the higher multiplier increases the score');
+});
 test('ramps trigger airtime and award one multiplier bonus for each size',()=>{
   for(const [kind,amount] of [['ramp-small',1.25],['ramp-large',1.5]]){
     const r=start(newRun('expert',course([{id:0,kind,x:360,y:100,halfWidth:28,halfHeight:22}])));

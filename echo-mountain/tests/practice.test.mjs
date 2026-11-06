@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createCourse,WIDTH} from '../dist/course.mjs';
-import {newRun,start,pause,resume,performTrick,update,PRACTICE_RECOVERY_SECONDS} from '../dist/engine.mjs';
+import {newRun,start,pause,resume,endPractice,performTrick,update,PRACTICE_RECOVERY_SECONDS} from '../dist/engine.mjs';
+import {saveRun,validRecord} from '../dist/records.mjs';
 
 const tree=(id,y)=>({id,kind:'tree',x:WIDTH/2,y,halfWidth:27,halfHeight:27});
 const course=(entities,mode='practice',length=1000)=>({mode,difficulty:'beginner',width:WIDTH,length,initialSpeed:200,maxSpeed:200,acceleration:0,entities});
@@ -9,9 +10,31 @@ const until=(run,predicate,limit=1000)=>{for(let i=0;i<limit&&!predicate();i++)u
 
 test('practice uses the same generated downhill layout for every difficulty',()=>{
   for(const difficulty of ['beginner','intermediate','expert'])for(const seed of [0,8,42]){
-    const practice=createCourse(difficulty,seed,'practice');const {mode,...geometry}=practice;
+    const practice=createCourse(difficulty,seed,'practice');const {mode,endless,segmentIndex,generatedUntil,...geometry}=practice;
     assert.equal(mode,'practice');assert.deepEqual(geometry,createCourse(difficulty,seed,'downhill'));
+    assert.equal(endless,true);assert.equal(segmentIndex,0);assert.equal(generatedUntil,geometry.length);
   }
+});
+
+test('practice generates new terrain beyond the former finish and keeps memory bounded',()=>{
+  for(const difficulty of ['beginner','intermediate','expert']){
+    const model=createCourse(difficulty,42,'practice');const run=start(newRun(difficulty,model));
+    const segmentLength=model.length;run.y=segmentLength*5+10;update(run,.05,0);
+    assert.equal(run.phase,'playing');assert.ok(run.y>segmentLength*5);
+    assert.ok(model.generatedUntil>run.y+5000);assert.ok(model.segmentIndex>=5);
+    assert.ok(model.entities.some(entity=>entity.y>segmentLength*5),'new obstacles exist beyond the original track');
+    assert.ok(model.entities.every(entity=>entity.y>=segmentLength*3),'old segments are discarded');
+    assert.equal(new Set(model.entities.map(entity=>entity.id)).size,model.entities.length,'segment IDs stay unique');
+  }
+});
+
+test('ending endless practice saves distances beyond the original track',()=>{
+  const model=createCourse('beginner',42,'practice'),run=start(newRun('beginner',model));
+  run.y=model.length+500;pause(run);endPractice(run);assert.equal(run.phase,'finished');
+  const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+  const records=saveRun(storage,run);assert.equal(records.beginner.last.distance,model.length+500);
+  assert.equal(validRecord(records.beginner.last,createCourse('beginner',42,'practice')),true);
+  const normal=start(newRun('beginner',createCourse('beginner',42)));endPractice(normal);assert.equal(normal.phase,'playing');
 });
 
 test('a practice collision resets scoring and recovery holds position while time continues',()=>{

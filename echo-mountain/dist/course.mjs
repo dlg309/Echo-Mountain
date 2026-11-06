@@ -27,6 +27,30 @@ function makeEntity(id,kind,x,y,extra={}){
   const sizes={tree:[27,27],rock:[24,20],'rock-small':[15,13],fence:[41,10],'ramp-small':[28,22],'ramp-large':[39,27]};
   const [halfWidth,halfHeight]=sizes[kind];return {id,kind,x,y,halfWidth,halfHeight,...extra};
 }
+// Practice is streamed in finite downhill-sized segments so the course can
+// continue indefinitely without retaining every obstacle from the entire run.
+function practiceCourse(course){return {...course,mode:'practice',endless:true,segmentIndex:0,generatedUntil:course.length}}
+export function extendPracticeCourse(course,position,encountered,closest){
+  if(!course.endless)return;
+  while(position+5000>=course.generatedUntil){
+    const index=++course.segmentIndex,offset=course.generatedUntil;
+    const seed=(course.seed+Math.imul(index,0x9e3779b9))>>>0;
+    const segment=createCourse(course.difficulty,seed,'downhill');
+    const id=value=>`segment-${index}-${value}`;
+    for(const entity of segment.entities){
+      const copy={...entity,id:id(entity.id),y:entity.y+offset};
+      if(entity.pairedRampId!==undefined)copy.pairedRampId=id(entity.pairedRampId);
+      if(entity.pairedObstacleId!==undefined)copy.pairedObstacleId=id(entity.pairedObstacleId);
+      course.entities.push(copy);
+    }
+    course.generatedUntil+=segment.length;
+    const keepFrom=Math.max(0,offset-segment.length);
+    course.entities=course.entities.filter(entity=>{
+      if(entity.y>=keepFrom)return true;
+      encountered.delete(entity.id);closest.delete(entity.id);return false;
+    });
+  }
+}
 export function createCourse(difficulty,seedOverride,mode='downhill'){
   const level=LEVELS[difficulty];if(!level)throw new Error(`Unknown difficulty: ${difficulty}`);
   const seed=Number.isFinite(seedOverride)?seedOverride>>>0:level.seed,rnd=randomSource(seed),entities=[],rows=[];
@@ -39,7 +63,8 @@ export function createCourse(difficulty,seedOverride,mode='downhill'){
     }
     return {difficulty,...level,mode,seed,width:WIDTH,rows,entities};
   }
-  if(mode!=='downhill'&&mode!=='practice')throw new Error(`Unknown mode: ${mode}`);
+  if(mode==='practice')return practiceCourse(createCourse(difficulty,seed,'downhill'));
+  if(mode!=='downhill')throw new Error(`Unknown mode: ${mode}`);
   // Keep the familiar beginner course stable, including existing run markers.
   if(difficulty==='beginner'){
     let row=0;
@@ -49,7 +74,7 @@ export function createCourse(difficulty,seedOverride,mode='downhill'){
       rows.push({y,safe});add('tree',x,y,{row});row++;
       y+=level.gap+Math.floor(rnd()*38);
     }
-    return {difficulty,...level,...(mode==='practice'?{mode}:{}),seed,width:WIDTH,rows,entities};
+    return {difficulty,...level,seed,width:WIDTH,rows,entities};
   }
   let nextRamp=700+rnd()*650,row=0,reserved=[];
   for(let y=550;y<level.length-350;){
@@ -97,5 +122,5 @@ export function createCourse(difficulty,seedOverride,mode='downhill'){
     row++;
     y+=level.gap+(rnd()-.5)*55-(difficulty==='expert'?progress*28:0);
   }
-  return {difficulty,...level,...(mode==='practice'?{mode}:{}),seed,width:WIDTH,rows,entities:entities.sort((a,b)=>a.y-b.y)};
+  return {difficulty,...level,seed,width:WIDTH,rows,entities:entities.sort((a,b)=>a.y-b.y)};
 }

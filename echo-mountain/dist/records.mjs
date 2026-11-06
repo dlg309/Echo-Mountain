@@ -12,5 +12,5 @@ export function saveRun(storage,run) {
   return records;
 }
 export function validRecord(record, course) {
-  return record && Number.isFinite(record.distance) && record.distance>=0 && record.distance<=course.length && Number.isFinite(record.x) && record.x>=0 && record.x<=course.width;
+  return record && Number.isFinite(record.distance) && record.distance>=0 && (course.endless||record.distance<=course.length) && Number.isFinite(record.x) && record.x>=0 && record.x<=course.width;
 }

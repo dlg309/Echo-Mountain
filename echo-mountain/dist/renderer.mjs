@@ -4,8 +4,7 @@ import {validRecord} from './records.mjs';
 import {fogDistance,MAX_FOG_OPACITY} from './fog.mjs';
 const palettes={
   day:{snow:'#e4f2ef',contour:'#cfe7e0',shine:'#f9fffc',edge:'#c1e0d8',shadow:'#a3c8bc',tree:'#285e50',leaf:'#53917a',rock:'#829b99',pole:'#779b91',flag:'#df9c79',light:'#f5fbf4',label:'#eafff4',labelOutline:'#16483e',fog:'241,248,246'},
-  sunrise:{snow:'#f4e6df',contour:'#e5cbd0',shine:'#fff7ed',edge:'#e6c6bf',shadow:'#cbaeb0',tree:'#5b6671',leaf:'#9a8990',rock:'#a79391',pole:'#b29294',flag:'#de9179',light:'#fff0d7',label:'#ffead2',labelOutline:'#71443d',fog:'255,239,227'},
-  sunset:{snow:'#e9dce0',contour:'#d7bacb',shine:'#ffece7',edge:'#d8bdc7',shadow:'#baa0b2',tree:'#4a566a',leaf:'#837a90',rock:'#988994',pole:'#a28698',flag:'#e6a070',light:'#fce5d9',label:'#ffdfcb',labelOutline:'#653e58',fog:'246,226,230'},
+  golden:{snow:'#f0e1df',contour:'#dec3cc',shine:'#fff3e7',edge:'#dfc2c4',shadow:'#c3a7b0',tree:'#535e6d',leaf:'#8f8290',rock:'#a08e93',pole:'#aa8c96',flag:'#e29a75',light:'#ffebda',label:'#ffe6cd',labelOutline:'#6b4250',fog:'250,232,228'},
   twilight:{snow:'#b9c8d7',contour:'#9eafc7',shine:'#e0dce8',edge:'#899fb8',shadow:'#758ba4',tree:'#354b60',leaf:'#617b86',rock:'#7a8d9d',pole:'#8296aa',flag:'#e6a88f',light:'#f4dfd7',label:'#ffe4d2',labelOutline:'#3c425f',fog:'196,203,218'},
   night:{snow:'#304c65',contour:'#3b5d72',shine:'#638196',edge:'#213f54',shadow:'#1a3546',tree:'#113e3b',leaf:'#286a55',rock:'#6c8492',pole:'#96b4bd',flag:'#f4bd86',light:'#cceddf',label:'#cceeff',labelOutline:'#193149',fog:'142,166,183'},
 };
@@ -48,25 +47,25 @@ function trickTrail(ctx,trick,progress,x,y,p){
 function trickLabel(ctx,trick,x,y,p){
   ctx.save();ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle=p.labelOutline;ctx.lineJoin='round';ctx.strokeText(trick.label,x,y);ctx.fillStyle=p.label;ctx.fillText(trick.label,x,y);ctx.restore();
 }
-function rider(ctx,run,x,y,p,reducedMotion,sprite,reduceRecoveryMotion){
+function rider(ctx,run,x,y,p,reducedMotion,sprite){
   const progress=run.airDuration?1-run.airTime/run.airDuration:0;
   const height=run.airTime>0?Math.sin(progress*Math.PI)*(run.airKind==='large'?48:29):0;
   ctx.fillStyle=run.airTime>0?'#143b3d55':p.shadow;ctx.beginPath();ctx.ellipse(x+4,y+11,15+height*.25,8+height*.1,0,0,Math.PI*2);ctx.fill();
   const trick=run.trick&&TRICKS[run.trick.name],trickProgress=trick?Math.min(1,run.trick.elapsed/trick.duration):0;
   if(!reducedMotion)trickTrail(ctx,trick,trickProgress,x,y-height,p);
   ctx.save();ctx.translate(x,y-height);
-  if(trick?.flip&&!reducedMotion)ctx.translate(0,trick.flip*Math.sin(trickProgress*Math.PI*2)*12);
-  const spin=trick&&!reducedMotion?(trick.turns||(sprite?0:trick.flip)||0)*Math.PI*2*trickProgress:0;
+  if(trick?.flip)ctx.translate(0,trick.flip*Math.sin(trickProgress*Math.PI*2)*12);
+  const spin=trick?(trick.turns||(sprite?0:trick.flip)||0)*Math.PI*2*trickProgress:0;
   // Keep a clear fallen pose even with reduced motion; otherwise ease upright near recovery.
-  const recoveryAngle=run.recoveryTime>0?(reduceRecoveryMotion?1.05:1.05*Math.min(1,run.recoveryTime/.35)):0;
+  const recoveryAngle=run.recoveryTime>0?(reducedMotion?1.05:1.05*Math.min(1,run.recoveryTime/.35)):0;
   ctx.rotate(run.phase==='crashed'?.7:run.recoveryTime>0?recoveryAngle:-run.tilt+spin);
-  const scale=(1.25+height/180)*(trick&&!reducedMotion?1.3:1);
+  const scale=(1.25+height/180)*(trick?1.3:1);
   // A small perspective squash accompanies the full visual rotation for flips.
-  const flipScale=trick?.flip&&!reducedMotion?1-.3*Math.sin(trickProgress*Math.PI)**2:1;
+  const flipScale=trick?.flip?1-.3*Math.sin(trickProgress*Math.PI)**2:1;
   ctx.scale(scale,scale*(sprite?1:flipScale));
   if(sprite){
     // A 4×4 flip sheet plays forward or backward; spins rotate the base pose.
-    const frame=trick?.flip&&!reducedMotion?(trick.flip>0?Math.min(15,Math.floor(trickProgress*16)):15-Math.min(15,Math.floor(trickProgress*16))):0;
+    const frame=trick?.flip?(trick.flip>0?Math.min(15,Math.floor(trickProgress*16)):15-Math.min(15,Math.floor(trickProgress*16))):0;
     const cell=sprite.naturalWidth/4;
     ctx.drawImage(sprite,(frame%4)*cell,Math.floor(frame/4)*cell,cell,cell,-62,-62,124,124);
     ctx.restore();
@@ -100,7 +99,7 @@ function drawHalfpipe(ctx,h,p){
   for(const x of [150,WIDTH-150,220,WIDTH-220]){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
   ctx.restore();
 }
-export function render(ctx,canvas,run,light,record,fogEnabled=false,{reducedMotion=false,trickMotion=!reducedMotion,sprite=null}={}){
+export function render(ctx,canvas,run,light,record,fogEnabled=false,{reducedMotion=false,sprite=null}={}){
   const p=palettes[light]||palettes.day,w=canvas.width,h=canvas.height,margin=(w-WIDTH)/2,viewY=run.y-h*.22;
   if(light==='twilight'){
     const snow=ctx.createLinearGradient(0,0,0,h);
@@ -121,11 +120,11 @@ export function render(ctx,canvas,run,light,record,fogEnabled=false,{reducedMoti
   for(let i=0;i<18;i++){const y=((i*113-Math.floor(viewY*.5))%(h+100)+(h+100))%(h+100)-50;for(const x of [2,WIDTH-2]){ctx.beginPath();ctx.moveTo(x,y-22);ctx.lineTo(x-12,y+14);ctx.lineTo(x+12,y+14);ctx.closePath();ctx.fill()}}
   ctx.restore();
   if(!reducedMotion&&run.phase==='playing'&&run.speed>run.course.initialSpeed*1.15){ctx.save();ctx.globalAlpha=Math.min(.3,(run.speed/run.course.maxSpeed)*.3);ctx.strokeStyle=p.shine;ctx.lineWidth=2;for(let i=0;i<12;i++){const y=((i*101-viewY*1.5)%(h+60)+(h+60))%(h+60)-30;for(const x of [18+i%3*8,WIDTH-18-i%3*8]){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+24+i%3*9);ctx.stroke()}}ctx.restore()}
-  for(let distance=1000;distance<run.course.length;distance+=1000){const y=distance-viewY;if(y< -40||y>h+40)continue;ctx.strokeStyle=p.pole;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(18,y-13);ctx.lineTo(18,y+12);ctx.stroke();ctx.fillStyle=p.flag;ctx.beginPath();ctx.moveTo(18,y-13);ctx.lineTo(60,y-13);ctx.lineTo(54,y-1);ctx.lineTo(18,y-1);ctx.fill();ctx.font='700 8px sans-serif';ctx.textAlign='left';ctx.fillStyle='#fff';ctx.fillText(`${distance/UNITS_PER_METRE} M`,22,y-4)}
-  const finish=run.course.length-viewY;if(finish>-50&&finish<h+50){ctx.fillStyle='#275b50';ctx.fillRect(14,finish-4,WIDTH-28,8);for(let x=14;x<WIDTH-14;x+=28){ctx.fillStyle=(Math.floor((x-14)/28)%2)?'#285b50':'#f7fff9';ctx.fillRect(x,finish-15,Math.min(28,WIDTH-14-x),11)}ctx.fillStyle=p.tree;ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('FINISH',WIDTH/2,finish+25)}
+  for(let distance=Math.max(1000,Math.ceil((viewY-50)/1000)*1000);distance<=viewY+h+50&&(run.course.endless||distance<run.course.length);distance+=1000){const y=distance-viewY;ctx.strokeStyle=p.pole;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(18,y-24);ctx.lineTo(18,y+22);ctx.stroke();ctx.fillStyle=p.flag;ctx.beginPath();ctx.moveTo(18,y-24);ctx.lineTo(96,y-24);ctx.lineTo(87,y-2);ctx.lineTo(18,y-2);ctx.fill();ctx.font='700 14px sans-serif';ctx.textAlign='left';ctx.fillStyle='#173b43';ctx.fillText(`${distance/UNITS_PER_METRE} M`,24,y-8)}
+  const finish=run.course.length-viewY;if(!run.course.endless&&finish>-50&&finish<h+50){ctx.fillStyle='#275b50';ctx.fillRect(14,finish-4,WIDTH-28,8);for(let x=14;x<WIDTH-14;x+=28){ctx.fillStyle=(Math.floor((x-14)/28)%2)?'#285b50':'#f7fff9';ctx.fillRect(x,finish-15,Math.min(28,WIDTH-14-x),11)}ctx.fillStyle=p.tree;ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('FINISH',WIDTH/2,finish+25)}
   for(const e of run.course.entities){const y=e.y-viewY;if(y< -85||y>h+85)continue;if(e.kind==='tree')tree(ctx,e,e.x,y,p);else if(e.kind==='rock'||e.kind==='rock-small')rock(ctx,e,e.x,y,p);else if(e.kind==='fence')fence(ctx,e,e.x,y,p);else ramp(ctx,e,e.x,y,p)}
   if(validRecord(record?.last,run.course)){const y=record.last.distance-viewY;if(y>-40&&y<h+40){marker(ctx,y,'left','LAST RUN','#d98469',record.last.distance);endSpot(ctx,record.last.x,y,'#d98469',10)}}
   if(validRecord(record?.best,run.course)){const y=record.best.distance-viewY;if(y>-40&&y<h+40){marker(ctx,y,'right','LONGEST','#6a9e89',record.best.distance);endSpot(ctx,record.best.x,y,'#6a9e89',15)}}
   if(fogEnabled&&run.difficulty==='expert')drawFog(ctx,run,h,p,margin);
-  rider(ctx,run,run.x,run.y-viewY,p,!trickMotion,sprite,reducedMotion);ctx.restore();
+  rider(ctx,run,run.x,run.y-viewY,p,reducedMotion,sprite);ctx.restore();
 }

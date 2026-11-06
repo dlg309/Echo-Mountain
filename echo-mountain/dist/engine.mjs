@@ -1,6 +1,5 @@
-import {createCourse, WIDTH, PIPE_LEFT, PIPE_RIGHT, SMALL_AIRTIME, LARGE_AIRTIME} from './course.mjs';
+import {createCourse, extendPracticeCourse, WIDTH, PIPE_LEFT, PIPE_RIGHT, SMALL_AIRTIME, LARGE_AIRTIME} from './course.mjs';
 export const RIDER_RADIUS=12;
-export const MAX_MULTIPLIER=5;
 const STEER_SPEED=310;
 export const PRACTICE_RECOVERY_SECONDS=1.2;
 export const TRICKS={
@@ -29,6 +28,7 @@ export function newRun(difficulty='beginner',course=createCourse(difficulty)){
 export function start(run){if(run.phase==='ready')run.phase='playing';return run}
 export function pause(run){if(run.phase==='playing')run.phase='paused';return run}
 export function resume(run){if(run.phase==='paused')run.phase='playing';return run}
+export function endPractice(run){if(run.course.endless&&run.course.mode==='practice'&&['playing','paused'].includes(run.phase)){run.phase='finished';run.recoveryTime=0;run.airTime=0;run.airKind=null;run.trick=null;run.trickCount=0;run.completedTricks=[];run.cue=null;run.cueTime=0}return run}
 function pointSegmentDistance(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,len=dx*dx+dy*dy,t=len?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/len)):0;return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))}
 function hitsRect(ax,ay,bx,by,left,right,top,bottom){let enter=0,exit=1;for(const [p,d,min,max] of [[ax,bx-ax,left,right],[ay,by-ay,top,bottom]]){if(Math.abs(d)<1e-8){if(p<min||p>max)return false}else{let a=(min-p)/d,b=(max-p)/d;if(a>b)[a,b]=[b,a];enter=Math.max(enter,a);exit=Math.min(exit,b);if(enter>exit)return false}}return true}
 function distanceToEntity(e,ax,ay,bx,by){
@@ -38,7 +38,7 @@ function distanceToEntity(e,ax,ay,bx,by){
   }
   return pointSegmentDistance(e.x,e.y,ax,ay,bx,by)-e.halfWidth;
 }
-function reward(run,amount,label){run.multiplier=Math.min(MAX_MULTIPLIER,Math.round((run.multiplier+amount)*100)/100);run.cue=label;run.cueTime=1.5}
+function reward(run,amount,label){run.multiplier=Math.round((run.multiplier+amount)*100)/100;run.cue=label;run.cueTime=1.5}
 export function canClear(airKind,obstacleKind){
   return airKind==='large'&&['tree','rock','rock-small','fence'].includes(obstacleKind)
     || airKind==='small'&&['rock-small','fence'].includes(obstacleKind);
@@ -79,8 +79,9 @@ export function update(run,delta,direction){
     return run;
   }
   if(run.course.mode==='halfpipe')return updateHalfpipe(run,dt,steer);
+  if(run.course.endless)extendPracticeCourse(run.course,run.y,run.encountered,run.closest);
   run.time+=dt;run.speed=Math.min(run.course.maxSpeed,run.speed+run.course.acceleration*dt);
-  run.x=Math.max(RIDER_RADIUS,Math.min(WIDTH-RIDER_RADIUS,run.x+steer*STEER_SPEED*dt));run.y=Math.min(run.course.length,run.y+run.speed*dt);
+  run.x=Math.max(RIDER_RADIUS,Math.min(WIDTH-RIDER_RADIUS,run.x+steer*STEER_SPEED*dt));run.y=run.course.endless?run.y+run.speed*dt:Math.min(run.course.length,run.y+run.speed*dt);
   run.tilt+=(steer*.28-run.tilt)*Math.min(1,dt*10);
   run.cueTime=Math.max(0,run.cueTime-dt);run.score+=dt*15*run.multiplier;
   const air=advanceAir(run,dt);
@@ -112,6 +113,6 @@ export function update(run,delta,direction){
     if(run.y>e.y+e.halfHeight+RIDER_RADIUS){if(run.closest.get(e.id)<=RIDER_RADIUS+24)reward(run,.25,'CLOSE CALL  +0.25×');run.closest.delete(e.id);run.encountered.add(e.id)}
   }
   scoreTricks(run,air.tricks);
-  if(run.y>=run.course.length)run.phase='finished';return run;
+  if(!run.course.endless&&run.y>=run.course.length)run.phase='finished';return run;
 }
 export function formatTime(t){return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}.${String(Math.floor((t%1)*100)).padStart(2,'0')}`}

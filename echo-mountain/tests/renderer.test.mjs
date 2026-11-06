@@ -21,20 +21,19 @@ test('trick rendering rotates the rider for spins and opposite flips',()=>{
   assert.ok(includesAngle(rotations('720',.5),Math.PI*2));
   assert.ok(includesAngle(rotations('frontflip',.25),Math.PI/2));
   assert.ok(includesAngle(rotations('backflip',.25),-Math.PI/2));
-  assert.ok(!includesAngle(rotations('360',.5,true),Math.PI));
+  assert.ok(includesAngle(rotations('360',.5,true),Math.PI),'trick animation stays enabled with reduced motion');
 });
 
-test('sprite flips select forward and reverse frames and reduced motion uses the base pose',()=>{
-  function source(name,fraction,reducedMotion=false,trickMotion=!reducedMotion){
+test('sprite flips select forward and reverse frames with or without reduced motion',()=>{
+  function source(name,fraction,reducedMotion=false){
     let drawn;const ctx=new Proxy({}, {get(target,key){if(key==='drawImage')return (...args)=>{drawn=args};return target[key]??(()=>{})},set(target,key,value){target[key]=value;return true}});
     const run=start(newRun('intermediate',{...createCourse('intermediate'),entities:[]}));
     run.airTime=.5;run.airDuration=1;run.airKind='small';run.trick={name,elapsed:TRICKS[name].duration*fraction};
-    render(ctx,{width:840,height:1000},run,'day',null,false,{reducedMotion,trickMotion,sprite:{naturalWidth:400}});return drawn.slice(1,3);
+    render(ctx,{width:840,height:1000},run,'day',null,false,{reducedMotion,sprite:{naturalWidth:400}});return drawn.slice(1,3);
   }
   assert.deepEqual(source('frontflip',.25),[0,100]);
   assert.deepEqual(source('backflip',.25),[300,200]);
-  assert.deepEqual(source('frontflip',.25,true),[0,0]);
-  assert.deepEqual(source('frontflip',.25,true,true),[0,100]);
+  assert.deepEqual(source('frontflip',.25,true),[0,100]);
 });
 
 test('practice recovery has a fallen pose and respects reduced motion',()=>{
@@ -51,7 +50,7 @@ test('practice recovery has a fallen pose and respects reduced motion',()=>{
 });
 
 test('halfpipe lips are drawn at the collision boundaries in every lighting mode',()=>{
-  for(const light of ['day','sunrise','sunset','twilight','night']){
+  for(const light of ['day','golden','twilight','night']){
     let current=[];const paths=[];
     const ctx=new Proxy({}, {get(target,key){
       if(key==='createLinearGradient')return ()=>({addColorStop(){}});
@@ -66,4 +65,12 @@ test('halfpipe lips are drawn at the collision boundaries in every lighting mode
       assert.ok(paths.some(path=>path.width===5&&JSON.stringify(path.points)===JSON.stringify([['moveTo',x,0],['lineTo',x,1000]])),`${light}: lip at ${x}`);
     }
   }
+});
+
+test('endless practice draws distance markers beyond the original course without a finish line',()=>{
+  const labels=[];const ctx=new Proxy({}, {get(target,key){if(key==='fillText')return text=>labels.push(text);return target[key]??(()=>{})},set(target,key,value){target[key]=value;return true}});
+  const course=createCourse('beginner',42,'practice'),run=start(newRun('beginner',course));
+  run.y=course.length+1000;
+  render(ctx,{width:840,height:1000},run,'day',null,false,{reducedMotion:true});
+  assert.ok(labels.includes('1200 M'));assert.ok(!labels.includes('FINISH'));
 });
