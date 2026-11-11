@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#122f37">
+  <title>Echo Mountain</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="#"><span aria-hidden="true">✳</span><div>ECHO <b>MOUNTAIN</b><small>YOUR MOUNTAIN. YOUR LINE.</small></div></a>
+  <span class="header-right">FIND YOUR OWN LINE <i></i> <span>THE MOUNTAIN IS CALLING</span></span>
+  <div class="weather"><span id="light-icon" aria-hidden="true">☼</span><div><b id="light-name">BLUEBIRD DAY</b><small id="light-caption">CLEAR SKIES · FRESH SNOW</small></div></div>
+</header>
+<main>
+  <section class="shell" aria-label="Echo Mountain game">
+    <aside class="control-panel" aria-label="Game settings and records">
+      <div class="intro"><div class="eyebrow">◆ &nbsp; WELCOME TO THE MOUNTAIN</div><h1>Find your <em>line.</em></h1><p>Choose a trail. Make it yours.</p></div>
+      <div class="game-top">
+        <div class="trail-title"><small>YOUR TRAIL</small><strong id="trail-name">First Tracks</strong><span id="level-badge">● &nbsp; BEGINNER</span></div>
+        <div class="selectors">
+          <label>MODE<select id="mode" aria-label="Choose game mode"><option value="downhill">Downhill</option><option value="practice">Practice</option><option value="ramps">Trick run</option><option value="halfpipe">Halfpipe</option></select></label>
+          <label>DIFFICULTY<select id="difficulty" aria-label="Choose difficulty"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="expert">Expert</option></select></label>
+          <label>TIME OF DAY<select id="lighting" aria-label="Choose time of day"><option value="day">Day</option><option value="golden">Golden hour</option><option value="twilight">Twilight</option><option value="night">Night</option></select></label>
+          <label id="fog-setting" class="fog-setting" hidden><span>EXPERT FOG</span><span class="fog-control"><input id="fog" type="checkbox" checked><span id="fog-status">On</span></span></label>
+        </div>
+      </div>
+      <div class="ride-controls"><button id="pause" type="button" disabled aria-keyshortcuts="P Escape">Pause · P / Esc</button><button id="help" type="button">How to ride</button></div>
+      <div class="game-bottom">
+        <div class="control-tip"><span class="round-icon">↔</span><p><b>CARVE YOUR PATH</b><small>← → or A / D to steer<br>P / Esc to pause</small></p></div>
+        <div class="control-tip"><span class="round-icon">✳</span><p><b>BUILD YOUR MULTIPLIER</b><small>Close calls and jumps raise your score</small></p></div>
+        <div class="records"><small>YOUR MARKERS · <span id="record-level">BEGINNER</span></small><b><span class="last-dot">●</span> LAST <span id="last-record">—</span> <span class="record-divider">/</span> <span class="best-dot">●</span> LONGEST <span id="best-record">—</span></b></div>
+      </div>
+      <p id="storage-note" class="storage-note">Markers are saved in this browser. Intermediate and expert courses reshuffle each run.</p>
+      <footer>MADE FOR THE LOVE OF THE RIDE. <span>✳</span></footer>
+    </aside>
+    <div class="play-area">
+      <div class="stats" aria-label="Run statistics"><div><small>SCORE</small><strong id="score">0</strong></div><div><small>MULTIPLIER</small><strong id="multiplier">1.00×</strong></div><div><small>SPEED</small><strong><span id="speed">0</span> <em>KM/H</em></strong></div><div><small>TIME</small><strong id="time">00:00.00</strong></div><div class="distance-stat"><small>DESCENT <span id="percent">0%</span></small><strong><span id="distance">0</span><em id="distance-total"> / <span id="length">1,050</span> M</em></strong><div id="progress-wrap" class="progress"><i id="progress"></i></div></div></div>
+      <div class="mountain-stage" data-light="day">
+        <div class="side-scenery side-left" aria-hidden="true"><i></i><i></i><i></i><span>✳</span></div>
+        <div class="canvas-wrap"><canvas id="game" width="720" height="520" tabindex="-1" aria-label="Top down snowboarding course. Use left and right arrow keys, or A and D, to steer."></canvas><div id="cue" class="cue" aria-live="polite"></div><div id="overlay" class="overlay"><div class="card"><div class="badge">✳ &nbsp; ECHO MOUNTAIN</div><div id="overlay-content" aria-live="polite"></div></div></div><div class="touch"><button id="left" aria-label="Steer left">←</button><button id="right" aria-label="Steer right">→</button></div><div class="touch-tricks" aria-label="Airborne tricks"><button data-trick="180">180°</button><button data-trick="360">360°</button><button data-trick="720">720°</button><button data-trick="frontflip">Front flip</button><button data-trick="backflip">Backflip</button></div></div>
+        <div class="side-scenery side-right" aria-hidden="true"><i></i><i></i><i></i><span>✳</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="game.mjs"></script>
+</body>
+</html>
