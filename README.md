@@ -190,3 +190,20 @@ The tests cover game rules, practice recovery, trick modes, pause and resume, ra
 - `tests/`: automated tests for the engine, trick modes, renderer, and interface logic.
 
 The `dist` folder remains the editable game source and can still be served directly with Python. The optional Vite build writes to `build/`.
+
+Review the existing EchoMountain3D repository and rewrite `README.md` to accurately describe the Unity 3D snowboarding game.
+
+Requirements:
+- Inspect the actual project files before writing.
+- Use the repository's Unity version and existing implementation.
+- Include overview, features, tech stack, setup, controls, development status, roadmap, and documentation links.
+- Clearly separate implemented, in-progress, and planned features.
+- Reference the original Echo Mountain 2D prototype as the project's predecessor.
+- Move AI coding instructions to `AGENTS.md`.
+- Preserve useful existing documentation.
+- Do not claim unimplemented features are functional.
+- Do not modify gameplay code.
+- Keep documentation concise and professional.
+- Report changed files and anything requiring verification.
+
+Minimize token usage. Avoid unnecessary explanations.
